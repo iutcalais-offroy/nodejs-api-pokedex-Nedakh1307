@@ -2,6 +2,9 @@ import {createServer} from "http";
 import {env} from "./env";
 import express from "express";
 import cors from "cors";
+import authRoutes from "./routes/auth.routes"; 
+import { authMiddleware, AuthRequest } from "./middlewares/auth.middleware"; 
+
 
 // Create Express app
 export const app = express();
@@ -15,6 +18,18 @@ app.use(
 );
 
 app.use(express.json());
+app.use(express.static('public'));
+
+app.use("/api/auth", authRoutes);
+
+// Route de test protégée pour valider le middleware
+app.get("/api/me", authMiddleware, (req: AuthRequest, res) => {
+  if (!req.user) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  res.json({ user: req.user });
+});
 
 // Serve static files (Socket.io test client)
 app.use(express.static('public'));

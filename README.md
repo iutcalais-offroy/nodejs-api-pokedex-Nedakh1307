@@ -1,5 +1,7 @@
 # Setup du projet
 
+git push --set-upstream origin 1-schema-prisma-deck-deckcard
+
 Ce projet est une API REST pour un jeu de cartes Pokemon en ligne avec système de jeu en temps réel. Il utilise *
 *Express**, **TypeScript**, **Prisma ORM**, **PostgreSQL** et **Socket.io**.
 

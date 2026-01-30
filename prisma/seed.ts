@@ -41,7 +41,7 @@ async function main() {
     const pokemonJson = readFileSync(pokemonDataPath, "utf-8");
     const pokemonData: CardModel[] = JSON.parse(pokemonJson);
 
-    const createdCards = await Promise.all(
+    await Promise.all(
         pokemonData.map((pokemon) =>
             prisma.card.create({
                 data: {
@@ -57,6 +57,49 @@ async function main() {
     );
 
     console.log(`✅ Created ${pokemonData.length} Pokemon cards`);
+
+    const allCards = await prisma.card.findMany();
+
+    function getRandomCards<T>(cards: T[], count: number): T[] {
+        const shuffled = [...cards].sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, count);
+    }
+
+    const redDeck = await prisma.deck.create({
+        data: {
+            name: "Starter Deck",
+            userId: redUser.id,
+        },
+    });
+
+    const redCards = getRandomCards(allCards, 10);
+    for (const card of redCards) {
+        await prisma.deckCard.create({
+            data: {
+                deckId: redDeck.id,
+                cardId: card.id,
+            },
+        });
+    }
+
+    const blueDeck = await prisma.deck.create({
+        data: {
+            name: "Starter Deck",
+            userId: blueUser.id,
+        },
+    });
+
+    const blueCards = getRandomCards(allCards, 10);
+    for (const card of blueCards) {
+        await prisma.deckCard.create({
+            data: {
+                deckId: blueDeck.id,
+                cardId: card.id,
+            },
+        });
+    }
+
+    console.log("✅ Created starter decks for red and blue");
 
     console.log("\n🎉 Database seeding completed!");
 }

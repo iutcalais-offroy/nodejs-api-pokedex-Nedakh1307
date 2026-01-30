@@ -1,0 +1,25 @@
+meta {
+  name: Decks
+  seq: 5
+}
+
+docs {
+  # Decks
+
+  Endpoints CRUD pour gérer les decks de cartes.
+
+  ## Règle importante
+  Un deck doit contenir **exactement 10 cartes valides**.
+
+  ## Endpoints disponibles
+  - **Create Deck** : Créer un nouveau deck
+  - **Get My Decks** : Récupérer tous ses decks
+  - **Get Deck by ID** : Récupérer un deck spécifique
+  - **Update Deck** : Modifier le nom et/ou les cartes d'un deck
+  - **Delete Deck** : Supprimer un deck
+
+  ## Variables automatiques
+  Après "Get My Decks", la variable `{{deckId}}` est automatiquement remplie avec l'ID du premier deck pour faciliter les tests.
+
+  📖 Voir le README de ce dossier pour plus de détails.
+}

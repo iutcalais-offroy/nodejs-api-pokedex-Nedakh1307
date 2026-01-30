@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PokemonType {
+  Normal
+  Fire
+  Water
+  Electric
+  Grass
+  Ice
+  Fighting
+  Poison
+  Ground
+  Flying
+  Psychic
+  Bug
+  Rock
+  Ghost
+  Dragon
+  Dark
+  Steel
+  Fairy
+}
+
+model Card {
+  id            Int         @id @default(autoincrement())
+  name          String
+  hp            Int
+  attack        Int
+  type          PokemonType
+  pokedexNumber Int
+  imgUrl        String?
+  decks         DeckCard[]  // ← AJOUTEZ CETTE LIGNE
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  decks     Deck[]   // ← AJOUTEZ CETTE LIGNE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Deck {
+  id        Int        @id @default(autoincrement())
+  name      String
+  userId    Int
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards     DeckCard[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model DeckCard {
+  id        Int      @id @default(autoincrement())
+  deckId    Int
+  cardId    Int
+  deck      Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([deckId, cardId])
+}

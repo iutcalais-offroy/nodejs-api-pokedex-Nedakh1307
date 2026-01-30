@@ -1,0 +1,30 @@
+meta {
+  name: Delete Deck
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/decks/{{deckId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Delete a deck.
+
+  Requires authentication and deck ownership.
+
+  Variables needed:
+  - deckId: The UUID of the deck to delete (get from Get My Decks response)
+
+  Returns:
+  - 200: Deck deleted successfully
+  - 401: Unauthorized
+  - 403: Forbidden (not deck owner)
+  - 404: Deck not found
+}

@@ -1,0 +1,84 @@
+name: Seed TP issues
+
+on:
+  workflow_dispatch:
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Create issues
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            // Charger les issues depuis le fichier JSON
+            const issues = JSON.parse(
+              fs.readFileSync('.github/seeds/issues.json', 'utf8')
+            );
+
+            console.log(`📝 Found ${issues.length} issues in the seed file`);
+
+            // 1️⃣ Fermer et verrouiller toutes les issues existantes
+            console.log('\n🗑️  Closing existing issues...');
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100
+            });
+
+            let closedCount = 0;
+            for (const issue of existingIssues.data) {
+              // Fermer l'issue si elle est ouverte
+              if (issue.state === 'open') {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  state: 'closed'
+                });
+              }
+
+              // Verrouiller l'issue pour empêcher de nouvelles interactions
+              if (!issue.locked) {
+                await github.rest.issues.lock({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  lock_reason: 'resolved'
+                });
+              }
+
+              console.log(`  🗑️  Closed and locked issue #${issue.number}: "${issue.title}"`);
+              closedCount++;
+            }
+            console.log(`✅ Closed and locked ${closedCount} existing issues`);
+
+            // 2️⃣ Créer les nouvelles issues
+            console.log('\n📝 Creating new issues...');
+            let createdCount = 0;
+
+            for (const issueData of issues) {
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issueData.title,
+                body: issueData.body,
+                labels: issueData.labels || []
+              });
+
+              console.log(`  ✅ Issue created: "${issueData.title}" (#${newIssue.data.number})`);
+              createdCount++;
+            }
+
+            console.log(`\n📊 Summary: ${closedCount} closed, ${createdCount} created`);

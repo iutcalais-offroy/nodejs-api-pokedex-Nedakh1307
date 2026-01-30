@@ -1,0 +1,31 @@
+meta {
+  name: Get My Decks
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/decks/mine
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.length > 0) {
+    bru.setVar("deckId", res.body[0].id);
+  }
+}
+
+docs {
+  Get all decks belonging to the authenticated user.
+
+  Requires authentication.
+
+  Returns:
+  - 200: List of user's decks (automatically saves first deck's ID to deckId variable)
+  - 401: Unauthorized
+}

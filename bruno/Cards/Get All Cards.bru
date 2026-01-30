@@ -1,0 +1,25 @@
+meta {
+  name: Get All Cards
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/cards
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Get all available cards in the game.
+
+  Requires authentication.
+
+  Returns:
+  - 200: List of all cards
+  - 401: Unauthorized (missing or invalid token)
+}

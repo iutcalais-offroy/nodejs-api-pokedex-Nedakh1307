@@ -1,0 +1,32 @@
+meta {
+  name: Sign In (Blue)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/auth/sign-in
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "blue@example.com",
+    "password": "password123"
+  }
+}
+
+script:post-response {
+  if (res.status === 200) {
+    bru.setVar("token", res.body.token);
+  }
+}
+
+docs {
+  Sign in as Blue user (from seed data).
+
+  Returns:
+  - 200: Sign in successful with JWT token (automatically saved to environment)
+  - 401: Invalid credentials
+}

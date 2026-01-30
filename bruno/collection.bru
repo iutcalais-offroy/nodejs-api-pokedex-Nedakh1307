@@ -1,0 +1,179 @@
+meta {
+  name: TCG Backend API
+  type: collection
+}
+
+docs {
+  # 🎮 Pokemon-like TCG Backend API
+
+  Collection de requêtes pour tester l'API du jeu de cartes Pokemon-like TCG.
+
+  ## 🚀 Démarrage rapide
+
+  ### 1. Configuration de l'environnement
+  ```bash
+  # Installer les dépendances
+  npm install
+
+  # Configurer les variables d'environnement
+  cp .env.example .env
+
+  # Démarrer PostgreSQL avec Docker
+  npm run db:start
+
+  # Initialiser la base de données
+  npm run db:generate
+  npm run db:migrate
+  npm run db:seed  # Seed avec données de test
+  ```
+
+  ### 2. Démarrer le serveur
+  ```bash
+  npm run dev  # Port 3001 par défaut
+  ```
+
+  ### 3. Tester l'API avec Bruno
+  1. Ouvrir "Health Check" pour vérifier que l'API fonctionne
+  2. Utiliser "Sign In (Red)" ou "Sign In (Blue)" pour s'authentifier
+  3. Le token JWT est automatiquement sauvegardé dans `{{token}}`
+  4. Tester les autres endpoints (Cards, Decks)
+
+  ## 📁 Organisation de la collection
+
+  ### 🔐 Auth (Authentification)
+  - **Sign In (Red)** : Connexion avec red@example.com
+  - **Sign In (Blue)** : Connexion avec blue@example.com
+  - **Sign Up** : Création de nouveau compte
+
+  ### 🃏 Cards (Cartes)
+  - **Get All Cards** : Récupération de toutes les cartes Pokemon
+
+  ### 📚 Decks (Decks de cartes)
+  - **Create Deck** : Créer un deck (20 cartes exactement)
+  - **Get My Decks** : Voir ses decks
+  - **Get Deck by ID** : Détails d'un deck spécifique
+  - **Update Deck** : Modifier un deck
+  - **Delete Deck** : Supprimer un deck
+
+  ### ❤️ Health Check
+  - Vérification que le serveur est en ligne
+
+  ## 🔑 Variables d'environnement
+
+  ### Variables configurables
+  - **`{{baseUrl}}`** : URL de base de l'API (default: http://localhost:3001)
+    - Configurée dans `environments/local.bru`
+
+  ### Variables automatiques
+  - **`{{token}}`** : Token JWT sauvegardé après sign-in/sign-up
+  - **`{{deckId}}`** : ID du deck sauvegardé après "Get My Decks"
+
+  ## 👥 Utilisateurs de test
+
+  Deux utilisateurs sont créés lors du seed :
+
+  | Utilisateur | Email | Mot de passe | Decks |
+  |-------------|-------|--------------|-------|
+  | Red | red@example.com | password123 | 1 deck (20 cartes) |
+  | Blue | blue@example.com | password123 | 1 deck (20 cartes) |
+
+  ## 🔒 Authentification
+
+  ### JWT Bearer Token
+  - La plupart des endpoints nécessitent une authentification
+  - Le token est envoyé via le header: `Authorization: Bearer {{token}}`
+  - Durée de validité: 7 jours
+
+  ### Workflow d'authentification
+  1. Utiliser "Sign In" ou "Sign Up"
+  2. Le token est automatiquement sauvegardé dans `{{token}}`
+  3. Toutes les requêtes authentifiées l'utilisent automatiquement
+  4. Pour se déconnecter, supprimer la variable `{{token}}`
+
+  ## 📖 Architecture de l'API
+
+  ### Stack technique
+  - **Express.js** : Framework web
+  - **TypeScript** : Typage statique
+  - **PostgreSQL** : Base de données (via Docker)
+  - **Prisma** : ORM
+  - **JWT** : Authentification
+  - **bcryptjs** : Hash des mots de passe
+  - **Docker Compose** : Environnement de développement
+
+  ### Pattern MVC
+  ```
+  Routes → Middlewares → Controllers → Prisma → Database
+  ```
+
+  - **Routes** (`src/routes/`) : Définition des endpoints et middlewares
+  - **Controllers** (`src/controllers/`) : Logique métier
+  - **Middlewares** (`src/middlewares/`) : Authentification, validation
+  - **Database** : SQLite avec Prisma ORM
+
+  ## 🧪 Tests
+
+  ### Lancer les tests
+  ```bash
+  npm test              # Mode watch
+  npm run test:run      # Une seule fois
+  npm run test:ui       # Interface graphique
+  npm run test:coverage # Avec couverture
+  ```
+
+  ### Vérification des types
+  ```bash
+  npm run ts:check
+  ```
+
+  ## 📚 Documentation supplémentaire
+
+  - **README principal** : Voir `bruno/README.md`
+  - **Auth** : Voir `bruno/Auth/README.md`
+  - **Cards** : Voir `bruno/Cards/README.md`
+  - **Decks** : Voir `bruno/Decks/README.md`
+  - **API Swagger** : http://localhost:3001/api-docs (quand le serveur est démarré)
+
+  ## 🛠️ Commandes utiles
+
+  ### Docker & Base de données
+  ```bash
+  npm run db:start      # Démarre PostgreSQL (Docker)
+  npm run db:stop       # Arrête PostgreSQL
+
+  npm run db:generate   # Génère le client Prisma
+  npm run db:migrate    # Applique les migrations
+  npm run db:seed       # Seed la base de données
+  npm run db:reset      # Reset + migrations + seed
+  npm run db:studio     # Interface graphique Prisma
+  ```
+
+  Commandes Docker additionnelles (optionnel):
+  ```bash
+  docker ps                              # Vérifie le statut
+  docker logs but2-tcg-postgres          # Voir les logs
+  docker restart but2-tcg-postgres       # Redémarre
+  docker volume rm but2-tcg-postgres-data # Supprime données
+  ```
+
+  ### Build & Run
+  ```bash
+  npm run dev           # Mode développement
+  npm run build         # Compile TypeScript
+  npm start             # Mode production
+  ```
+
+  ## ⚠️ Notes importantes
+
+  - Un deck doit contenir **exactement 20 cartes**
+  - Les cartes peuvent être dupliquées dans un deck
+  - Le token JWT expire après 7 jours
+  - Les IDs de cartes sont au format "001", "002", etc.
+  - Les decks sont liés à l'utilisateur connecté (pas de partage)
+
+  ## 🔗 Liens utiles
+
+  - **Repository** : (ajouter le lien du repo)
+  - **Documentation complète** : Voir `CLAUDE.md` à la racine du projet
+  - **Game System** : Voir `GAME_SYSTEM.md` pour la documentation du système de jeu
+}

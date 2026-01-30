@@ -1,0 +1,20 @@
+meta {
+  name: Health Check
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/health
+  body: none
+  auth: none
+}
+
+docs {
+  Check if the backend server is running and healthy.
+  
+  No authentication required.
+  
+  Returns:
+  - 200: Server is healthy
+}

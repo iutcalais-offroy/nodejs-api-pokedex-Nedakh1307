@@ -1,0 +1,23 @@
+# Node
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+.DS_Store
+.env
+*.log
+.cache/
+
+# Build
+build/
+dist/
+
+# Test
+coverage/
+
+# Database
+generated
+prisma/data/

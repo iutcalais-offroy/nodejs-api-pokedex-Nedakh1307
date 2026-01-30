@@ -1,0 +1,20 @@
+meta {
+  name: Cards
+  seq: 4
+}
+
+docs {
+  # Cartes
+
+  Endpoints pour récupérer les cartes Pokemon disponibles dans le jeu.
+
+  ## Endpoints disponibles
+  - **Get All Cards** : Récupérer toutes les cartes (authentification requise)
+
+  ## Informations
+  - Les cartes sont chargées depuis `prisma/data/pokemon.json` lors du seed
+  - Chaque carte contient : id, name, hp, attack, type, pokedexNumber, imgUrl
+  - Les cartes sont triées par numéro Pokédex
+
+  📖 Voir le README de ce dossier pour plus de détails.
+}

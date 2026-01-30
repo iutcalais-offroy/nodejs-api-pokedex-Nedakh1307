@@ -1,0 +1,30 @@
+meta {
+  name: Get Deck by ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/decks/{{deckId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Get a specific deck by its ID.
+
+  Requires authentication and deck ownership.
+
+  Variables needed:
+  - deckId: The UUID of the deck to retrieve (get from Get My Decks response)
+
+  Returns:
+  - 200: Deck details with cards
+  - 401: Unauthorized
+  - 403: Forbidden (not deck owner)
+  - 404: Deck not found
+}

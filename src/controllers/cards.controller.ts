@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../database";
 
-export const getAllCards = async (req: Request, res: Response): Promise<void> => {
+export const getAllCards = async (_req: Request, res: Response): Promise<void> => {
   try {
     const cards = await prisma.card.findMany({
       orderBy: {

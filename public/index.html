@@ -5,11 +5,9 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>TCG Socket.io Test Client</title>
     <link href="style.css" rel="stylesheet">
-    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 <h1>TCG Socket.io Test Client</h1>
-
 <!-- Connection Section -->
 <div class="section">
     <h2>Connection</h2>
@@ -27,7 +25,6 @@
             </div>
             <button onclick="signIn()">Sign In & Connect</button>
         </div>
-
         <!-- Manual Token Connection -->
         <div class="event-group">
             <h3>Manual Token</h3>
@@ -42,7 +39,6 @@
 
     <div class="status disconnected" id="status">Disconnected</div>
 </div>
-
 <!-- Main Layout: Events on left, Logs on right -->
 <div class="main-grid">
     <!-- Left Column: Events -->
@@ -78,7 +74,6 @@
                 <button onclick="joinRoom()">Join Room</button>
             </div>
         </div>
-
         <!-- Game Events -->
         <div class="section">
             <h2>Game Events</h2>
@@ -124,7 +119,6 @@
             </div>
         </div>
     </div>
-
     <!-- Right Column: Logs -->
     <div class="logs-column">
         <div class="section logs-section">
@@ -135,6 +129,7 @@
     </div>
 </div>
 
+<script src="/socket.io/socket.io.js"></script>
 <script src="client.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { AuthRequest } from "../middlewares/auth.middleware";
-import { prisma } from "../database"; // Assure-toi que c'est le bon chemin vers ton instance Prisma
+import { prisma } from "../database"; 
 
 export const deckController = {
   // POST /api/decks
@@ -14,7 +14,7 @@ export const deckController = {
         return res.status(400).json({ error: "A deck must have exactly 10 cards" });
       }
 
-      // Vérifier si toutes les cartes existent
+      
       const existingCards = await prisma.card.findMany({
         where: { id: { in: cards } }
       });
@@ -76,7 +76,7 @@ export const deckController = {
       const deckId = Number(req.params.id);
       const userId = req.user?.userId;
 
-      // Vérifier l'existence et la propriété
+     
       const existingDeck = await prisma.deck.findFirst({
         where: { id: deckId, userId }
       });
@@ -90,7 +90,7 @@ export const deckController = {
         if (validCards.length !== 10) return res.status(400).json({ error: "Invalid card IDs" });
       }
 
-      // Transaction : Supprimer les anciennes cartes et mettre à jour
+     
       const updatedDeck = await prisma.$transaction(async (tx) => {
         if (cards) {
           await tx.deckCard.deleteMany({ where: { deckId } });

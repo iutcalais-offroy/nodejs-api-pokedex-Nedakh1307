@@ -3,7 +3,6 @@ import { getAllCards } from "../controllers/cards.controller";
 
 const router = Router();
 
-// Endpoint public pour toutes les cartes
-router.get("/cards", getAllCards);
+router.get("/", getAllCards);
 
 export default router;

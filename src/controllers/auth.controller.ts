@@ -9,7 +9,7 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
     const { email, username, password } = req.body;
 
     if (!email || !username || !password || password.length < 6) {
-      res.status(400).json({ error: "Missing or invalid required fields (password must be at least 6 characters)" });
+      res.status(400).json({message: "Missing or invalid required fields (password must be at least 6 characters)" });
       return;
     }
 
@@ -18,7 +18,7 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (existingUser) {
-      res.status(409).json({ error: "Email already in use" });
+      res.status(409).json({message: "Email already in use" });
       return;
     }
 
@@ -46,9 +46,9 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
         username: user.username,
       },
     });
-  } catch (error) {
-    console.error("Sign up error:", error);
-    res.status(500).json({ error: "Internal server error" });
+  } catch (message) {
+    console.log("Sign up error:", message);
+    res.status(500).json({message: "Internal server error" });
   }
 };
 
@@ -57,7 +57,7 @@ export const signIn = async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      res.status(400).json({ error: "Missing required fields" });
+      res.status(400).json({message: "Missing required fields" });
       return;
     }
 
@@ -66,14 +66,14 @@ export const signIn = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (!user) {
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({message: "Invalid credentials" });
       return;
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({message: "Invalid credentials" });
       return;
     }
 
@@ -91,8 +91,8 @@ export const signIn = async (req: Request, res: Response): Promise<void> => {
         username: user.username,
       },
     });
-  } catch (error) {
-    console.error("Sign in error:", error);
-    res.status(500).json({ error: "Internal server error" });
+  } catch (message) {
+    console.log("Sign in error:", message);
+    res.status(500).json({message: "Internal server error" });
   }
 };

@@ -22,11 +22,10 @@ app.use(
 // Middleware pour parser le JSON
 app.use(express.json());
 
-// Serve static files (
+// Serve static files
 app.use(express.static('public'));
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/cards", cardsRoutes);
-app.use("/api/decks", decksRoutes); 
-}
+app.use("/api/decks", decksRoutes);

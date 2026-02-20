@@ -2,6 +2,10 @@ import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { env } from '../env'
 
+/**
+ * @interface AuthRequest
+ * @description 
+ */
 export interface AuthRequest extends Request {
   user?: {
     userId: number
@@ -9,11 +13,21 @@ export interface AuthRequest extends Request {
   }
 }
 
+/**
+ * @interface JwtPayload
+ * @description 
+ */
 interface JwtPayload {
   userId: number
   email: string
 }
 
+/**
+ * @function isValidJwtPayload
+ * @description 
+ * @param {unknown} obj 
+ * @returns {boolean} 
+ */
 function isValidJwtPayload(obj: unknown): obj is JwtPayload {
   return (
     typeof obj === 'object' &&
@@ -25,6 +39,18 @@ function isValidJwtPayload(obj: unknown): obj is JwtPayload {
   )
 }
 
+/**
+ * @function authMiddleware
+ * @description 
+ * @param {AuthRequest} req
+ * @param {Response} res 
+ * @param {NextFunction} next 
+ * @returns {void}
+ * @throws {401} 
+ * @throws {401} 
+ * @throws {401} 
+ * @throws {401} 
+ */
 export const authMiddleware = (
   req: AuthRequest,
   res: Response,
@@ -39,7 +65,6 @@ export const authMiddleware = (
     }
 
     const token = authHeader.substring(7)
-
     const decoded = jwt.verify(token, env.JWT_SECRET)
 
     if (!isValidJwtPayload(decoded)) {

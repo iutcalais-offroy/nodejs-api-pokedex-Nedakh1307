@@ -1,9 +1,9 @@
-import { Router } from "express";
-import { getAllCards } from "../controllers/cards.controller";
+import { Router } from 'express'
+import { getAllCards } from '../controllers/cards.controller'
 
-const router = Router();
+const router = Router()
 
 // Endpoint public pour toutes les cartes
-router.get("/cards", getAllCards);
+router.get('/cards', getAllCards)
 
-export default router;
+export default router

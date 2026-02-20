@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import { prisma } from '../database'
 
-export const getAllCards = async (req: Request, res: Response) => {
+export const getAllCards = async (_req: Request, res: Response) => {
   try {
     const cards = await prisma.card.findMany({
       orderBy: { pokedexNumber: 'asc' },

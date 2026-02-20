@@ -1,12 +1,14 @@
 import { createServer } from 'http'
 import { env } from './env'
 import express from 'express'
-import { Server } from 'socket.io' // Import pour corriger "io is not defined"
+import { Server } from 'socket.io' 
 import cors from 'cors'
 import authRoutes from './routes/auth.routes'
 import { authMiddleware, AuthRequest } from './middlewares/auth.middleware'
 import decksRoutes from './routes/decks.routes'
-import cardsRoutes from './routes/cards.routes' // Import ajouté ici pour corriger l'erreur
+import cardsRoutes from './routes/cards.routes' 
+import { setupSwagger } from './docs/index'
+import { fileURLToPath } from 'url'
 
 // Create Express app
 export const app = express()
@@ -14,16 +16,17 @@ export const app = express()
 // Middlewares
 app.use(
   cors({
-    origin: true, // Autorise toutes les origines
+    origin: true, 
     credentials: true,
   }),
 )
 
-// Middleware pour parser le JSON (Placé avant les routes pour que req.body fonctionne)
+// Middleware pour parser le JSON 
 app.use(express.json())
 
-// Routes
+setupSwagger(app)
 
+// Routes
 app.use('/api', cardsRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api', decksRoutes)
@@ -47,7 +50,8 @@ app.get('/api/health', (_req, res) => {
 })
 
 // Start server only if this file is run directly (not imported for tests)
-if (require.main === module) {
+// @ts-ignore
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // Create HTTP server
   const httpServer = createServer(app)
 
@@ -68,6 +72,7 @@ if (require.main === module) {
       console.log(
         `🧪 Socket.io Test Client available at http://localhost:${env.PORT}`,
       )
+      console.log(`📄 Swagger UI available at http://localhost:${env.PORT}/api-docs`)
     })
   } catch (error) {
     console.error('Failed to start server:', error)

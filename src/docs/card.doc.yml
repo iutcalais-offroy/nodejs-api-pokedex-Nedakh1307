@@ -1,0 +1,22 @@
+paths:
+  /cards:
+    get:
+      tags:
+        - Cards
+      summary: Récupère toutes les cartes
+      description: Retourne la liste de toutes les cartes triées par numéro Pokédex
+      responses:
+        '200':
+          description: Liste des cartes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Card'
+        '500':
+          description: Erreur serveur
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

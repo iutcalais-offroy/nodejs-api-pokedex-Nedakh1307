@@ -1,0 +1,57 @@
+openapi: 3.0.0
+info:
+  title: Pokémon TCG API
+  description: API REST pour la gestion de cartes et decks Pokémon
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000/api
+    description: Serveur de développement
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        username:
+          type: string
+
+    Card:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        pokedexNumber:
+          type: integer
+
+    Deck:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        userId:
+          type: integer
+        cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/Card'
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string

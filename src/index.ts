@@ -2,13 +2,13 @@ import { fileURLToPath } from 'url'
 import { createServer } from 'http'
 import { env } from './env'
 import express from 'express'
-import { Server } from 'socket.io' // Import pour corriger "io is not defined"
+import { Server } from 'socket.io' 
 import cors from 'cors'
 import jwt from 'jsonwebtoken'
 import authRoutes from './routes/auth.routes'
 import { authMiddleware, AuthRequest } from './middlewares/auth.middleware'
 import decksRoutes from './routes/decks.routes'
-import cardsRoutes from './routes/cards.routes' // Import ajouté ici pour corriger l'erreur
+import cardsRoutes from './routes/cards.routes' 
 import { setupSwagger } from './docs/index'
 
 // Create Express app

@@ -11,6 +11,8 @@ import decksRoutes from './routes/decks.routes'
 import cardsRoutes from './routes/cards.routes' 
 import { setupSwagger } from './docs/index'
 import { prisma } from './database'
+import { calculateDamage } from './utils/rules.util'
+import { PokemonType } from './generated/prisma/client'
 
 // Create Express app
 export const app = express()
@@ -51,6 +53,34 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'TCG Backend Server is running' })
 })
 
+// Types
+interface CardData {
+  id: number
+  name: string
+  hp: number
+  attack: number
+  type: PokemonType
+  currentHp: number
+}
+
+interface PlayerState {
+  socketId: string
+  userId: number
+  email: string
+  username: string
+  hand: CardData[]
+  deck: CardData[]
+  activeCard: CardData | null
+  score: number
+}
+
+interface GameState {
+  roomId: string
+  players: [PlayerState, PlayerState]
+  currentPlayerSocketId: string
+  started: boolean
+}
+
 // Stockage des rooms en mémoire
 const waitingRooms = new Map<string, {
   roomId: string
@@ -61,6 +91,52 @@ const waitingRooms = new Map<string, {
   hostDeckId: number
   hostDeck: object[]
 }>()
+
+// Stockage des parties en cours
+const activeGames = new Map<string, GameState>()
+
+// Fonctions utilitaires
+function getOpponent(game: GameState, socketId: string): PlayerState {
+  return game.players[0].socketId === socketId ? game.players[1] : game.players[0]
+}
+
+function getPlayer(game: GameState, socketId: string): PlayerState {
+  return game.players[0].socketId === socketId ? game.players[0] : game.players[1]
+}
+
+function buildGameStateView(game: GameState, socketId: string) {
+  const player = getPlayer(game, socketId)
+  const opponent = getOpponent(game, socketId)
+  return {
+    roomId: game.roomId,
+    currentPlayerSocketId: game.currentPlayerSocketId,
+    isMyTurn: game.currentPlayerSocketId === socketId,
+    me: {
+      userId: player.userId,
+      email: player.email,
+      username: player.username,
+      hand: player.hand,
+      activeCard: player.activeCard,
+      score: player.score,
+      deckSize: player.deck.length,
+    },
+    opponent: {
+      userId: opponent.userId,
+      email: opponent.email,
+      username: opponent.username,
+      handSize: opponent.hand.length,
+      activeCard: opponent.activeCard,
+      score: opponent.score,
+      deckSize: opponent.deck.length,
+    },
+  }
+}
+
+function emitGameState(io: Server, game: GameState) {
+  for (const player of game.players) {
+    io.to(player.socketId).emit('gameStateUpdated', buildGameStateView(game, player.socketId))
+  }
+}
 
 // Start server only if this file is run directly (not imported for tests)
 // @ts-ignore
@@ -116,12 +192,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
     // CREATE_ROOM - Vérifie le deck en BDD et crée la room
     socket.on('createRoom', async ({ deckId: rawDeckId }: { deckId: number | string }) => {
-    const deckId = Number(rawDeckId)
+      const deckId = Number(rawDeckId)
       try {
-        // Vérifier que le deck appartient à l'utilisateur et a 10 cartes
         const deck = await prisma.deck.findFirst({
           where: { id: deckId, userId: socket.data.userId },
-          include: { cards: true },
+          include: { cards: { include: { card: true } } },
         })
 
         if (!deck) {
@@ -134,7 +209,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
           return
         }
 
-        // Récupérer l'username
         const user = await prisma.user.findUnique({
           where: { id: socket.data.userId },
         })
@@ -143,7 +217,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         socket.join(roomId)
         socket.data.deckId = deckId
 
-        // Stocker la room en attente
         waitingRooms.set(roomId, {
           roomId,
           hostSocketId: socket.id,
@@ -154,7 +227,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
           hostDeck: deck.cards,
         })
 
-        // Confirmation au créateur
         socket.emit('roomCreated', {
           roomId,
           host: {
@@ -164,25 +236,21 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
           },
         })
 
-        // Broadcast liste mise à jour à tous
         const rooms = [...waitingRooms.values()].map((r) => ({
           roomId: r.roomId,
-          host: {
-            userId: r.hostUserId,
-            email: r.hostEmail,
-            username: r.hostUsername,
-          },
+          host: { userId: r.hostUserId, email: r.hostEmail, username: r.hostUsername },
         }))
         io.emit('roomsListUpdated', rooms)
 
       } catch (error) {
+        console.error('createRoom error:', error)
         socket.emit('error', { message: 'Internal server error' })
       }
     })
 
     // JOIN_ROOM - Vérifie le deck, rejoint la room et démarre la partie
     socket.on('joinRoom', async ({ roomId, deckId: rawDeckId }: { roomId: string; deckId: number | string }) => {
-    const deckId = Number(rawDeckId)
+      const deckId = Number(rawDeckId)
       try {
         const room = waitingRooms.get(roomId)
 
@@ -196,7 +264,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
           return
         }
 
-        // Vérifier que le deck appartient à l'utilisateur et a 10 cartes
         const deck = await prisma.deck.findFirst({
           where: { id: deckId, userId: socket.data.userId },
           include: { cards: { include: { card: true } } },
@@ -212,90 +279,192 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
           return
         }
 
-        // Récupérer le deck du host avec les cartes complètes
         const hostDeck = await prisma.deck.findFirst({
           where: { id: room.hostDeckId },
           include: { cards: { include: { card: true } } },
         })
 
-        const user = await prisma.user.findUnique({
-          where: { id: socket.data.userId },
-        })
+        const guestUser = await prisma.user.findUnique({ where: { id: socket.data.userId } })
 
         socket.join(roomId)
         socket.data.deckId = deckId
-
-        // Retirer la room de la liste d'attente
         waitingRooms.delete(roomId)
 
-        // Mélanger les cartes (5 premières = main initiale)
-        const guestHand = deck.cards.slice(0, 5)
-        const hostHand = hostDeck?.cards.slice(0, 5) ?? []
-
-        // Envoyer gameStarted au host (sa main visible, main adversaire cachée)
-        io.to(room.hostSocketId).emit('gameStarted', {
-          roomId,
-          yourHand: hostHand,
-          opponent: {
-            userId: socket.data.userId,
-            email: socket.data.email,
-            username: user?.username,
-            handSize: guestHand.length,
-          },
+        // Préparer les decks complets
+        const toCardData = (c: any): CardData => ({
+          id: c.card.id,
+          name: c.card.name,
+          hp: c.card.hp,
+          attack: c.card.attack,
+          type: c.card.type as PokemonType,
+          currentHp: c.card.hp,
         })
 
-        // Envoyer gameStarted au guest (sa main visible, main adversaire cachée)
-        socket.emit('gameStarted', {
-          roomId,
-          yourHand: guestHand,
-          opponent: {
-            userId: room.hostUserId,
-            email: room.hostEmail,
-            username: room.hostUsername,
-            handSize: hostHand.length,
-          },
-        })
+        const hostCards = (hostDeck?.cards ?? []).map(toCardData)
+        const guestCards = deck.cards.map(toCardData)
 
-        // Broadcast liste mise à jour (room retirée)
+        // Créer l'état de jeu
+        const game: GameState = {
+          roomId,
+          currentPlayerSocketId: room.hostSocketId, // host commence
+          started: true,
+          players: [
+            {
+              socketId: room.hostSocketId,
+              userId: room.hostUserId,
+              email: room.hostEmail,
+              username: room.hostUsername,
+              hand: hostCards.slice(0, 5),
+              deck: hostCards.slice(5),
+              activeCard: null,
+              score: 0,
+            },
+            {
+              socketId: socket.id,
+              userId: socket.data.userId,
+              email: socket.data.email,
+              username: guestUser?.username ?? socket.data.email,
+              hand: guestCards.slice(0, 5),
+              deck: guestCards.slice(5),
+              activeCard: null,
+              score: 0,
+            },
+          ],
+        }
+
+        activeGames.set(roomId, game)
+        emitGameState(io, game)
+
+        // Broadcast liste mise à jour
         const rooms = [...waitingRooms.values()].map((r) => ({
           roomId: r.roomId,
-          host: {
-            userId: r.hostUserId,
-            email: r.hostEmail,
-            username: r.hostUsername,
-          },
+          host: { userId: r.hostUserId, email: r.hostEmail, username: r.hostUsername },
         }))
         io.emit('roomsListUpdated', rooms)
 
       } catch (error) {
-        console.error('createRoom error:', error)
+        console.error('joinRoom error:', error)
         socket.emit('error', { message: 'Internal server error' })
       }
     })
 
     // DRAW_CARDS
     socket.on('drawCards', ({ roomId }: { roomId: string }) => {
-      const hand = Array.from({ length: 5 }, (_, i) => ({ cardIndex: i }))
-      socket.emit('cardsDrawn', { hand })
-      io.to(roomId).emit('gameState', { roomId, action: 'drawCards', player: socket.data.email })
+      const game = activeGames.get(roomId)
+      if (!game) { socket.emit('error', { message: 'Game not found' }); return }
+      if (game.currentPlayerSocketId !== socket.id) {
+        socket.emit('error', { message: 'Not your turn' }); return
+      }
+
+      const player = getPlayer(game, socket.id)
+      const slots = 5 - player.hand.length
+
+      if (slots <= 0) {
+        socket.emit('error', { message: 'Hand is full (5 cards max)' }); return
+      }
+
+      const drawn = player.deck.splice(0, slots)
+      player.hand.push(...drawn)
+
+      emitGameState(io, game)
     })
 
     // PLAY_CARD
     socket.on('playCard', ({ roomId, cardIndex }: { roomId: string; cardIndex: number }) => {
-      io.to(roomId).emit('cardPlayed', { player: socket.data.email, cardIndex })
-      io.to(roomId).emit('gameState', { roomId, action: 'playCard', player: socket.data.email, cardIndex })
+      const game = activeGames.get(roomId)
+      if (!game) { socket.emit('error', { message: 'Game not found' }); return }
+      if (game.currentPlayerSocketId !== socket.id) {
+        socket.emit('error', { message: 'Not your turn' }); return
+      }
+
+      const player = getPlayer(game, socket.id)
+
+      if (cardIndex < 0 || cardIndex >= player.hand.length) {
+        socket.emit('error', { message: 'Invalid card index' }); return
+      }
+
+      if (player.activeCard) {
+        socket.emit('error', { message: 'You already have an active card' }); return
+      }
+
+      const [card] = player.hand.splice(cardIndex, 1)
+      player.activeCard = card
+
+      emitGameState(io, game)
     })
 
     // ATTACK
     socket.on('attack', ({ roomId }: { roomId: string }) => {
-      io.to(roomId).emit('attacked', { player: socket.data.email })
-      io.to(roomId).emit('gameState', { roomId, action: 'attack', player: socket.data.email })
+      const game = activeGames.get(roomId)
+      if (!game) { socket.emit('error', { message: 'Game not found' }); return }
+      if (game.currentPlayerSocketId !== socket.id) {
+        socket.emit('error', { message: 'Not your turn' }); return
+      }
+
+      const player = getPlayer(game, socket.id)
+      const opponent = getOpponent(game, socket.id)
+
+      if (!player.activeCard) {
+        socket.emit('error', { message: 'You have no active card' }); return
+      }
+
+      if (!opponent.activeCard) {
+        socket.emit('error', { message: 'Opponent has no active card' }); return
+      }
+
+      // Calculer les dégâts
+      const damage = calculateDamage(
+        player.activeCard.attack,
+        player.activeCard.type,
+        opponent.activeCard.type,
+      )
+
+      opponent.activeCard.currentHp -= damage
+
+      // Vérifier si la carte adverse est KO
+      if (opponent.activeCard.currentHp <= 0) {
+        player.score += 1
+        opponent.activeCard = null
+
+        // Vérifier la victoire
+        if (player.score >= 3) {
+          emitGameState(io, game)
+          io.to(game.players[0].socketId).emit('gameEnded', {
+            winner: { userId: player.userId, email: player.email, username: player.username },
+            scores: {
+              [player.email]: player.score,
+              [opponent.email]: opponent.score,
+            },
+          })
+          io.to(game.players[1].socketId).emit('gameEnded', {
+            winner: { userId: player.userId, email: player.email, username: player.username },
+            scores: {
+              [player.email]: player.score,
+              [opponent.email]: opponent.score,
+            },
+          })
+          activeGames.delete(roomId)
+          return
+        }
+      }
+
+      // Changer de tour après l'attaque
+      game.currentPlayerSocketId = opponent.socketId
+      emitGameState(io, game)
     })
 
     // END_TURN
     socket.on('endTurn', ({ roomId }: { roomId: string }) => {
-      io.to(roomId).emit('turnEnded', { player: socket.data.email })
-      io.to(roomId).emit('gameState', { roomId, action: 'endTurn', player: socket.data.email })
+      const game = activeGames.get(roomId)
+      if (!game) { socket.emit('error', { message: 'Game not found' }); return }
+      if (game.currentPlayerSocketId !== socket.id) {
+        socket.emit('error', { message: 'Not your turn' }); return
+      }
+
+      const opponent = getOpponent(game, socket.id)
+      game.currentPlayerSocketId = opponent.socketId
+
+      emitGameState(io, game)
     })
 
     socket.on('disconnect', () => {

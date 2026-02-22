@@ -6,6 +6,7 @@
   "description": "TCG Pokemon-like Backend Server",
   "main": "dist/index.js",
   "scripts": {
+    "ts:check": "tsc --noEmit",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",

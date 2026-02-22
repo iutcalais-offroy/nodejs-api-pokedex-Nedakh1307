@@ -12,13 +12,21 @@ import path from 'path'
  * @returns {void}
  */
 export function setupSwagger(app: Express): void {
-// @ts-ignore
+  // @ts-expect-error - import.meta.url not available in commonjs
   const docsDir = new URL('.', import.meta.url).pathname
 
-  const base = YAML.parse(fs.readFileSync(path.join(docsDir, 'swagger.config.yml'), 'utf8'))
-  const authDoc = YAML.parse(fs.readFileSync(path.join(docsDir, 'auth.doc.yml'), 'utf8'))
-  const cardDoc = YAML.parse(fs.readFileSync(path.join(docsDir, 'card.doc.yml'), 'utf8'))
-  const deckDoc = YAML.parse(fs.readFileSync(path.join(docsDir, 'deck.doc.yml'), 'utf8'))
+  const base = YAML.parse(
+    fs.readFileSync(path.join(docsDir, 'swagger.config.yml'), 'utf8'),
+  )
+  const authDoc = YAML.parse(
+    fs.readFileSync(path.join(docsDir, 'auth.doc.yml'), 'utf8'),
+  )
+  const cardDoc = YAML.parse(
+    fs.readFileSync(path.join(docsDir, 'card.doc.yml'), 'utf8'),
+  )
+  const deckDoc = YAML.parse(
+    fs.readFileSync(path.join(docsDir, 'deck.doc.yml'), 'utf8'),
+  )
 
   const swaggerDoc = {
     ...base,

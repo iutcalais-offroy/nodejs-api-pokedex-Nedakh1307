@@ -4,7 +4,7 @@ import { env } from '../env'
 
 /**
  * @interface AuthRequest
- * @description 
+ * @description
  */
 export interface AuthRequest extends Request {
   user?: {
@@ -15,7 +15,7 @@ export interface AuthRequest extends Request {
 
 /**
  * @interface JwtPayload
- * @description 
+ * @description
  */
 interface JwtPayload {
   userId: number
@@ -24,9 +24,9 @@ interface JwtPayload {
 
 /**
  * @function isValidJwtPayload
- * @description 
- * @param {unknown} obj 
- * @returns {boolean} 
+ * @description
+ * @param {unknown} obj
+ * @returns {boolean}
  */
 function isValidJwtPayload(obj: unknown): obj is JwtPayload {
   return (
@@ -41,15 +41,15 @@ function isValidJwtPayload(obj: unknown): obj is JwtPayload {
 
 /**
  * @function authMiddleware
- * @description 
+ * @description
  * @param {AuthRequest} req
- * @param {Response} res 
- * @param {NextFunction} next 
+ * @param {Response} res
+ * @param {NextFunction} next
  * @returns {void}
- * @throws {401} 
- * @throws {401} 
- * @throws {401} 
- * @throws {401} 
+ * @throws {401}
+ * @throws {401}
+ * @throws {401}
+ * @throws {401}
  */
 export const authMiddleware = (
   req: AuthRequest,

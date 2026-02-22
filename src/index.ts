@@ -560,14 +560,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
   // Start server
   try {
-    httpServer.listen(env.PORT, () => {
-      console.log(`\n🚀 Server is running on http://localhost:${env.PORT}`)
-      console.log(
-        `🧪 Socket.io Test Client available at http://localhost:${env.PORT}`,
-      )
-      console.log(
-        `📄 Swagger UI available at http://localhost:${env.PORT}/api-docs`,
-      )
+    const PORT = process.env.PORT || env.PORT || 3000
+
+    httpServer.listen(Number(PORT), '0.0.0.0', () => {
+      console.log(`\n🚀 Server is running on port ${PORT}`)
+      console.log(`🧪 Socket.io ready for connections`)
+      console.log(`📄 Swagger UI available at /api-docs`)
     })
   } catch (error) {
     console.error('Failed to start server:', error)

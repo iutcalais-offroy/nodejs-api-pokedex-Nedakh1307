@@ -1,23 +1,5 @@
-# Node
-node_modules/
-
-# IDE
-.vscode/
-.idea/
-
-# Misc
-.DS_Store
+node_modules
+dist
 .env
-*.log
-.cache/
-
-# Build
-build/
-dist/
-
-# Test
-coverage/
-
-# Database
-generated
-prisma/data/
+.env.local
+coverage

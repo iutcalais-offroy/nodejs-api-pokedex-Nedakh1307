@@ -6,6 +6,8 @@
   "description": "TCG Pokemon-like Backend Server",
   "main": "dist/index.js",
   "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "test:run": "vitest --run",
     "test:coverage": "vitest --coverage --run",
     "format": "prettier --write .",

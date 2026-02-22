@@ -1,7 +1,6 @@
 {
   "name": "template-tcg-api",
   "version": "1.0.0",
-  "type": "module",
   "author": "KHELIFI  https://github.com/iutcalais-offroy/nodejs-api-pokedex-Nedakh1307",
   "description": "TCG Pokemon-like Backend Server",
   "main": "dist/index.js",

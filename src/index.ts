@@ -2,14 +2,15 @@ import { fileURLToPath } from 'url'
 import { createServer } from 'http'
 import { env } from './env'
 import express from 'express'
-import { Server } from 'socket.io' // Import pour corriger "io is not defined"
+import { Server } from 'socket.io' 
 import cors from 'cors'
 import jwt from 'jsonwebtoken'
 import authRoutes from './routes/auth.routes'
 import { authMiddleware, AuthRequest } from './middlewares/auth.middleware'
 import decksRoutes from './routes/decks.routes'
-import cardsRoutes from './routes/cards.routes' // Import ajouté ici pour corriger l'erreur
+import cardsRoutes from './routes/cards.routes' 
 import { setupSwagger } from './docs/index'
+import { prisma } from './database'
 
 // Create Express app
 export const app = express()
@@ -50,6 +51,17 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'TCG Backend Server is running' })
 })
 
+// Stockage des rooms en mémoire
+const waitingRooms = new Map<string, {
+  roomId: string
+  hostSocketId: string
+  hostUserId: number
+  hostEmail: string
+  hostUsername: string
+  hostDeckId: number
+  hostDeck: object[]
+}>()
+
 // Start server only if this file is run directly (not imported for tests)
 // @ts-ignore
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -89,43 +101,176 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   io.on('connection', (socket) => {
     console.log(`✅ Client connecté au Socket: ${socket.id} | user: ${socket.data.email}`)
 
-    // GET_ROOMS
+    // GET_ROOMS - Retourne uniquement les rooms en attente
     socket.on('getRooms', () => {
-      const rooms = [...io.sockets.adapter.rooms.entries()]
-        .filter(([key]) => !io.sockets.sockets.has(key))
-        .map(([key, value]) => ({ id: key, players: value.size }))
+      const rooms = [...waitingRooms.values()].map((room) => ({
+        roomId: room.roomId,
+        host: {
+          userId: room.hostUserId,
+          email: room.hostEmail,
+          username: room.hostUsername,
+        },
+      }))
       socket.emit('roomsList', rooms)
     })
 
-    // CREATE_ROOM
-    socket.on('createRoom', ({ deckId }: { deckId: string }) => {
-      const roomId = `room-${Date.now()}`
-      socket.join(roomId)
-      socket.data.deckId = deckId
-      socket.emit('roomCreated', { roomId })
-      io.emit('roomsList', [...io.sockets.adapter.rooms.entries()]
-        .filter(([key]) => !io.sockets.sockets.has(key))
-        .map(([key, value]) => ({ id: key, players: value.size })))
+    // CREATE_ROOM - Vérifie le deck en BDD et crée la room
+    socket.on('createRoom', async ({ deckId: rawDeckId }: { deckId: number | string }) => {
+    const deckId = Number(rawDeckId)
+      try {
+        // Vérifier que le deck appartient à l'utilisateur et a 10 cartes
+        const deck = await prisma.deck.findFirst({
+          where: { id: deckId, userId: socket.data.userId },
+          include: { cards: true },
+        })
+
+        if (!deck) {
+          socket.emit('error', { message: 'Deck not found or does not belong to you' })
+          return
+        }
+
+        if (deck.cards.length !== 10) {
+          socket.emit('error', { message: 'Deck must have exactly 10 cards' })
+          return
+        }
+
+        // Récupérer l'username
+        const user = await prisma.user.findUnique({
+          where: { id: socket.data.userId },
+        })
+
+        const roomId = `room-${Date.now()}`
+        socket.join(roomId)
+        socket.data.deckId = deckId
+
+        // Stocker la room en attente
+        waitingRooms.set(roomId, {
+          roomId,
+          hostSocketId: socket.id,
+          hostUserId: socket.data.userId,
+          hostEmail: socket.data.email,
+          hostUsername: user?.username ?? socket.data.email,
+          hostDeckId: deckId,
+          hostDeck: deck.cards,
+        })
+
+        // Confirmation au créateur
+        socket.emit('roomCreated', {
+          roomId,
+          host: {
+            userId: socket.data.userId,
+            email: socket.data.email,
+            username: user?.username,
+          },
+        })
+
+        // Broadcast liste mise à jour à tous
+        const rooms = [...waitingRooms.values()].map((r) => ({
+          roomId: r.roomId,
+          host: {
+            userId: r.hostUserId,
+            email: r.hostEmail,
+            username: r.hostUsername,
+          },
+        }))
+        io.emit('roomsListUpdated', rooms)
+
+      } catch (error) {
+        socket.emit('error', { message: 'Internal server error' })
+      }
     })
 
-    // JOIN_ROOM
-    socket.on('joinRoom', ({ roomId, deckId }: { roomId: string; deckId: string }) => {
-      const room = io.sockets.adapter.rooms.get(roomId)
-      if (!room) {
-        socket.emit('error', { message: 'Room not found' })
-        return
+    // JOIN_ROOM - Vérifie le deck, rejoint la room et démarre la partie
+    socket.on('joinRoom', async ({ roomId, deckId: rawDeckId }: { roomId: string; deckId: number | string }) => {
+    const deckId = Number(rawDeckId)
+      try {
+        const room = waitingRooms.get(roomId)
+
+        if (!room) {
+          socket.emit('error', { message: 'Room not found' })
+          return
+        }
+
+        if (room.hostSocketId === socket.id) {
+          socket.emit('error', { message: 'You cannot join your own room' })
+          return
+        }
+
+        // Vérifier que le deck appartient à l'utilisateur et a 10 cartes
+        const deck = await prisma.deck.findFirst({
+          where: { id: deckId, userId: socket.data.userId },
+          include: { cards: { include: { card: true } } },
+        })
+
+        if (!deck) {
+          socket.emit('error', { message: 'Deck not found or does not belong to you' })
+          return
+        }
+
+        if (deck.cards.length !== 10) {
+          socket.emit('error', { message: 'Deck must have exactly 10 cards' })
+          return
+        }
+
+        // Récupérer le deck du host avec les cartes complètes
+        const hostDeck = await prisma.deck.findFirst({
+          where: { id: room.hostDeckId },
+          include: { cards: { include: { card: true } } },
+        })
+
+        const user = await prisma.user.findUnique({
+          where: { id: socket.data.userId },
+        })
+
+        socket.join(roomId)
+        socket.data.deckId = deckId
+
+        // Retirer la room de la liste d'attente
+        waitingRooms.delete(roomId)
+
+        // Mélanger les cartes (5 premières = main initiale)
+        const guestHand = deck.cards.slice(0, 5)
+        const hostHand = hostDeck?.cards.slice(0, 5) ?? []
+
+        // Envoyer gameStarted au host (sa main visible, main adversaire cachée)
+        io.to(room.hostSocketId).emit('gameStarted', {
+          roomId,
+          yourHand: hostHand,
+          opponent: {
+            userId: socket.data.userId,
+            email: socket.data.email,
+            username: user?.username,
+            handSize: guestHand.length,
+          },
+        })
+
+        // Envoyer gameStarted au guest (sa main visible, main adversaire cachée)
+        socket.emit('gameStarted', {
+          roomId,
+          yourHand: guestHand,
+          opponent: {
+            userId: room.hostUserId,
+            email: room.hostEmail,
+            username: room.hostUsername,
+            handSize: hostHand.length,
+          },
+        })
+
+        // Broadcast liste mise à jour (room retirée)
+        const rooms = [...waitingRooms.values()].map((r) => ({
+          roomId: r.roomId,
+          host: {
+            userId: r.hostUserId,
+            email: r.hostEmail,
+            username: r.hostUsername,
+          },
+        }))
+        io.emit('roomsListUpdated', rooms)
+
+      } catch (error) {
+        console.error('createRoom error:', error)
+        socket.emit('error', { message: 'Internal server error' })
       }
-      socket.join(roomId)
-      socket.data.deckId = deckId
-      socket.emit('roomJoined', { roomId })
-      io.to(roomId).emit('gameState', {
-        roomId,
-        players: [...room].map((id) => ({
-          id,
-          userId: io.sockets.sockets.get(id)?.data.userId,
-          email: io.sockets.sockets.get(id)?.data.email,
-        })),
-      })
     })
 
     // DRAW_CARDS
@@ -154,6 +299,17 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     })
 
     socket.on('disconnect', () => {
+      // Nettoyer les rooms si le host se déconnecte
+      for (const [roomId, room] of waitingRooms.entries()) {
+        if (room.hostSocketId === socket.id) {
+          waitingRooms.delete(roomId)
+          const rooms = [...waitingRooms.values()].map((r) => ({
+            roomId: r.roomId,
+            host: { userId: r.hostUserId, email: r.hostEmail, username: r.hostUsername },
+          }))
+          io.emit('roomsListUpdated', rooms)
+        }
+      }
       console.log(`❌ Client déconnecté: ${socket.id}`)
     })
   })

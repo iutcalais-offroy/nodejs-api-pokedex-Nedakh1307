@@ -7,7 +7,13 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   eslintPluginPrettier,
   {
-    ignores: ['public/**', 'dist/**', 'node_modules/**', 'coverage/**'],
+    ignores: [
+      'public/**',
+      'dist/**',
+      'node_modules/**',
+      'coverage/**',
+      'src/generated/**',
+    ],
   },
   {
     rules: {
